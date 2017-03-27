@@ -1,0 +1,59 @@
+TYPES : BEGIN OF t_data,
+        field1 TYPE c,
+        END OF t_data.
+
+DATA : lt_file TYPE filetable, "Internal table to hold the contents returned by the open dialog method
+       lt_file_data TYPE STANDARD TABLE OF t_data. "Internal table to hold file contents
+
+DATA : ls_file LIKE LINE OF lt_file. "Work area for LT_FILE
+
+DATA : lv_rc TYPE i, "Variable for return code
+       lv_file TYPE string. "File absolute path
+
+*Selection screen field for selecting the file from local computer
+PARAMETER: p_file TYPE string.
+
+*F4 help for selection screen field
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
+  REFRESH lt_file.
+  CLEAR : ls_file.
+
+  CALL METHOD cl_gui_frontend_services=>file_open_dialog
+    EXPORTING
+      window_title      = 'Choose your file'
+      initial_directory = 'C:\'
+    CHANGING
+      file_table        = lt_file
+      rc                = lv_rc.
+
+*Reading the internal table to find the file name
+  READ TABLE lt_file INTO ls_file INDEX 1.
+  IF sy-subrc EQ 0.
+    p_file = ls_file-filename.
+  ENDIF.
+
+START-OF-SELECTION.
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      filename                = p_file
+      filetype                = 'DAT'
+    TABLES
+      data_tab                = lt_file_data
+    EXCEPTIONS
+      file_open_error         = 1
+      file_read_error         = 2
+      no_batch                = 3
+      gui_refuse_filetransfer = 4
+      invalid_type            = 5
+      no_authority            = 6
+      unknown_error           = 7
+      bad_data_format         = 8
+      header_not_allowed      = 9
+      separator_not_allowed   = 10
+      header_too_long         = 11
+      unknown_dp_error        = 12
+      access_denied           = 13
+      dp_out_of_memory        = 14
+      disk_full               = 15
+      dp_timeout              = 16
+      OTHERS                  = 17.
